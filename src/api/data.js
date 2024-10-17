@@ -4,7 +4,7 @@ import { factories } from '../persistance/persister-factories.js';
 
 const router = express.Router();
 
-const persistenceFactory = factories[config.database.type];
+const persistenceFactory = factories[config.database.type]; 
 
 const { updateBatch } = await persistenceFactory(config.database.uri);
 
@@ -20,6 +20,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    console.log(req.body.batch);
     await updateBatch(req.body.batch);
 
     res.status(200).send({
@@ -45,6 +46,7 @@ router.put('/', async (req, res) => {
   }
 
   try {
+    console.log('req.body.data ->', req.body.data.id);
     await updateBatch([{ op: 'PUT', table: req.body.table, data: req.body.data }]);
 
     res.status(200).send({

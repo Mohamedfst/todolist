@@ -5,6 +5,7 @@ import PG from 'pg';
 const { Pool } = PG;
 
 function escapeIdentifier(identifier) {
+  //console.log(identifier);
   return `"${identifier.replace(/"/g, '""').replace(/\./g, '"."')}"`;
 }
 
@@ -13,22 +14,40 @@ function escapeIdentifier(identifier) {
  * `data` api routes.
  * @param {string} uri Postgres connection URI
  */
-export const createPostgresPersister = (uri) => {
+export const createPostgresPersister = async (uri) => {
+
   console.debug('Using Postgres Persister');
-
+  
   const url = new URL(uri);
-
   const pool = new Pool({
     host: url.hostname,
     database: url.pathname.split('/')[1],
     user: url.username,
     password: url.password,
-    port: url.port
+    port: 5432,
+    max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
   });
+
+  pool.on('connect', (client) => {
+    console.log('Connected to the database');
+  });
+  
 
   pool.on('error', (err, client) => {
     console.error('Pool connection failure to postgres:', err, client);
   });
+
+ pool.query(`CREATE TABLE IF NOT EXISTS
+        public.todos
+      (
+       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "task" text,
+        "is_complete" integer DEFAULT 0,
+        "modified_at" timestamp DEFAULT now(),
+        "user_id" uuid
+      );`);
 
   return {
     /**
@@ -36,15 +55,17 @@ export const createPostgresPersister = (uri) => {
      */
     updateBatch: async (batch) => {
       const client = await pool.connect();
+
       try {
         await client.query('BEGIN');
-
+          
         for (let op of batch) {
           const table = escapeIdentifier(op.table);
+          
           if (op.op == 'PUT') {
             const data = op.data;
             const with_id = { ...data, id: op.id ?? op.data.id };
-
+            
             const columnsEscaped = Object.keys(with_id).map(escapeIdentifier);
             const columnsJoined = columnsEscaped.join(', ');
 
@@ -54,6 +75,7 @@ export const createPostgresPersister = (uri) => {
               if (key == 'id') {
                 continue;
               }
+              
               updateClauses.push(`${escapeIdentifier(key)} = EXCLUDED.${escapeIdentifier(key)}`);
             }
 
@@ -66,9 +88,10 @@ export const createPostgresPersister = (uri) => {
                 INSERT INTO ${table} (${columnsJoined})
                 SELECT ${columnsJoined} FROM data_row
                 ON CONFLICT(id) ${updateClause}`;
-
+            console.log('with_id');
             await client.query(statement, [JSON.stringify(with_id)]);
-          } else if (op.op == 'PATCH') {
+          }
+          else if (op.op == 'PATCH') {
             const data = op.data;
             const with_id = { ...data, id: op.id ?? data.id };
 

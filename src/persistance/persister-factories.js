@@ -15,7 +15,7 @@ import { createPostgresPersister } from './postgres/postgres-persistance.js';
  * @prop {string} table - table name
  * @prop {string=} id - record id
  * @prop {Object} data - record data
- *
+ * 
  * @typedef {Object} PatchOp
  * @prop {"PATCH"} op - op type
  * @prop {string} table - table name
@@ -23,7 +23,7 @@ import { createPostgresPersister } from './postgres/postgres-persistance.js';
  * @prop {Object} data - record data
  *
  * @callback BatchPersister
- * @param {(DeleteOp | PutOp | PatchOp)[]} batch
+ * @param {(DeleteOp | PutOp | PatchOp )[]} batch 
  * @returns {Promise<void>}
  * 
  * @typedef {Object} Persister
